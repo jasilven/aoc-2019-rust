@@ -67,7 +67,7 @@ fn solve2(input: Vec<isize>) -> Result<isize> {
 fn main() -> Result<()> {
     let input = parse_input("resources/day2-input.txt")?;
     println!("part 1: {}", solve1(input.clone(), Some(12), Some(2))?);
-    println!("part 1: {}", solve2(input)?);
+    println!("part 2: {}", solve2(input)?);
     Ok(())
 }
 
