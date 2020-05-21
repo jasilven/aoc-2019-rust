@@ -148,10 +148,10 @@ mod tests {
         let input = parse_input("resources/day3-test.txt").unwrap();
         assert_eq!(30, solve2(&input).unwrap());
 
-        // let input = parse_input("resources/day3-test2.txt").unwrap();
-        // assert_eq!(159, solve1(&input).unwrap());
+        let input = parse_input("resources/day3-test2.txt").unwrap();
+        assert_eq!(159, solve1(&input).unwrap());
 
-        // let input = parse_input("resources/day3-test3.txt").unwrap();
-        // assert_eq!(135, solve1(&input).unwrap());
+        let input = parse_input("resources/day3-test3.txt").unwrap();
+        assert_eq!(135, solve1(&input).unwrap());
     }
 }
