@@ -1,35 +1,6 @@
 use anyhow::Result;
-
-struct Cpu {
-    pc: usize,
-    prog: Vec<isize>,
-}
-
-impl Cpu {
-    fn new(program: &[isize]) -> Cpu {
-        Cpu {
-            pc: 0,
-            prog: program.into(),
-        }
-    }
-
-    fn execute(&mut self) -> Result<()> {
-        loop {
-            let a = self.prog[self.pc + 1] as usize;
-            let b = self.prog[self.pc + 2] as usize;
-            let c = self.prog[self.pc + 3] as usize;
-
-            match self.prog[self.pc] {
-                1 => self.prog[c] = self.prog[a] + self.prog[b],
-                2 => self.prog[c] = self.prog[a] * self.prog[b],
-                99 => break,
-                _ => anyhow::bail!("unknown opcode '{}' at '{}'", self.prog[self.pc], &self.pc),
-            }
-            self.pc += 4;
-        }
-        Ok(())
-    }
-}
+use cpu::Cpu;
+mod cpu;
 
 fn parse_input(fname: &str) -> Result<Vec<isize>> {
     let input = std::fs::read_to_string(fname)?;
