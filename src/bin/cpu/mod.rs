@@ -13,8 +13,8 @@ pub fn parse_input(fname: &str) -> Result<Vec<isize>> {
 
 pub struct Cpu {
     pc: usize,
-    pub input: Receiver<isize>,
-    pub output: Sender<isize>,
+    input: Receiver<isize>,
+    output: Sender<isize>,
     pub prog: Vec<isize>,
 }
 
