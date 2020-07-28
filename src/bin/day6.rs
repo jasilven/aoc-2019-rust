@@ -24,6 +24,7 @@ fn get_paths(orbits: &HashMap<String, String>) -> Result<Vec<Vec<String>>> {
     for (outer, inner) in orbits.iter() {
         let mut path = vec![outer.to_owned()];
         let mut current = inner;
+
         loop {
             path.push(current.to_owned());
             if current == "COM" {
@@ -41,21 +42,58 @@ fn get_paths(orbits: &HashMap<String, String>) -> Result<Vec<Vec<String>>> {
 }
 
 fn solve1(paths: &Vec<Vec<String>>) -> Result<usize> {
-    let mut result = 0;
+    let sum = paths.iter().fold(0, |acc, p| acc + p.len());
 
-    for path in paths {
-        result += path.len();
+    Ok(sum - paths.len())
+}
+
+fn find_path<'a>(name: &str, paths: &'a Vec<Vec<String>>) -> Result<&'a Vec<String>> {
+    paths
+        .iter()
+        .find(|p| p[0] == name)
+        .ok_or_else(|| anyhow::anyhow!("YOU path not found"))
+}
+
+fn solve2(paths: &Vec<Vec<String>>) -> Result<usize> {
+    let you_path = find_path("YOU", paths)?;
+    let san_path = find_path("SAN", paths)?;
+    let mut you_rev = you_path.iter().rev();
+    let mut san_rev = san_path.iter().rev();
+
+    loop {
+        let a = you_rev
+            .next()
+            .ok_or_else(|| anyhow::anyhow!("YOU path end reached"))?;
+        let b = san_rev
+            .next()
+            .ok_or_else(|| anyhow::anyhow!("SAN path end reached"))?;
+        if a != b {
+            break;
+        }
     }
 
-    Ok(result - paths.len())
+    Ok(you_rev.len() + san_rev.len())
 }
 
 fn main() -> Result<()> {
     let data = parse_input("resources/day6-input.txt")?;
     let paths = get_paths(&data)?;
 
-    println!("part 1: {:?}", solve1(&paths)?);
+    println!("part 1: {}", solve1(&paths)?);
+    println!("part 2: {}", solve2(&paths)?);
 
     Ok(())
 }
 
+#[cfg(test)]
+mod day6_tests {
+    use super::*;
+
+    #[test]
+    fn part2_test_data() {
+        let data = parse_input("resources/day6-test.txt").unwrap();
+        let paths = get_paths(&data).unwrap();
+
+        assert_eq!(4, solve2(&paths).unwrap());
+    }
+}
