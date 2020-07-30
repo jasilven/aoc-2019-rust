@@ -13,17 +13,17 @@ pub fn parse_input(fname: &str) -> Result<Vec<isize>> {
 
 pub struct Cpu {
     pc: usize,
-    input: Receiver<isize>,
-    output: Sender<isize>,
+    sender: Sender<isize>,
+    recver: Receiver<isize>,
     pub prog: Vec<isize>,
 }
 
 impl Cpu {
-    pub fn new(program: &[isize], input: Receiver<isize>, output: Sender<isize>) -> Cpu {
+    pub fn new(program: &[isize], sender: Sender<isize>, recver: Receiver<isize>) -> Cpu {
         Cpu {
             pc: 0,
-            input,
-            output,
+            sender,
+            recver,
             prog: program.into(),
         }
     }
@@ -65,13 +65,13 @@ impl Cpu {
                 }
                 (3, _, _, _) => {
                     let a = self.prog[self.pc + 1] as usize;
-                    self.prog[a] = self.input.recv()?;
+                    self.prog[a] = self.recver.recv()?;
                     self.pc += 2;
                 }
                 (4, m1, _, _) => {
                     let a = self.get_param(1, m1 as usize)?;
 
-                    self.output.send(a)?;
+                    self.sender.send(a)?;
                     self.pc += 2;
                 }
                 (5, m1, m2, _) => {
@@ -130,7 +130,7 @@ mod cpu_tests {
     #[test]
     fn parse_instruction() {
         let (tx, rx): (Sender<isize>, Receiver<isize>) = mpsc::channel();
-        let cpu = Cpu::new(&vec![1002], rx, tx);
+        let cpu = Cpu::new(&vec![1002], tx, rx);
         assert_eq!(cpu.parse_instruction().unwrap(), (2, 0, 1, 0));
     }
 
@@ -146,7 +146,7 @@ mod cpu_tests {
         for prog in progs {
             let (tx, rx): (Sender<isize>, Receiver<isize>) = mpsc::channel();
             let (tx2, rx2): (Sender<isize>, Receiver<isize>) = mpsc::channel();
-            let mut cpu = Cpu::new(&prog, rx, tx2);
+            let mut cpu = Cpu::new(&prog, tx2, rx);
             tx.send(9).unwrap();
             cpu.execute().unwrap();
             assert_eq!(0, rx2.recv().unwrap());
@@ -163,7 +163,7 @@ mod cpu_tests {
         for prog in progs {
             let (tx, rx): (Sender<isize>, Receiver<isize>) = mpsc::channel();
             let (tx2, rx2): (Sender<isize>, Receiver<isize>) = mpsc::channel();
-            let mut cpu = Cpu::new(&prog, rx, tx2);
+            let mut cpu = Cpu::new(&prog, tx2, rx);
             tx.send(0).unwrap();
             cpu.execute().unwrap();
             assert_eq!(0, rx2.recv().unwrap());
@@ -180,7 +180,7 @@ mod cpu_tests {
 
         let (tx, rx): (Sender<isize>, Receiver<isize>) = mpsc::channel();
         let (tx2, rx2): (Sender<isize>, Receiver<isize>) = mpsc::channel();
-        let mut cpu = Cpu::new(&prog, rx, tx2);
+        let mut cpu = Cpu::new(&prog, tx2, rx);
         tx.send(7).unwrap();
         cpu.execute().unwrap();
         assert_eq!(999, rx2.recv().unwrap());

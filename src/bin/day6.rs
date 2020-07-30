@@ -43,7 +43,7 @@ fn get_paths(orbits: &HashMap<String, String>) -> Result<Vec<Vec<String>>> {
 
 fn solve1(paths: &Vec<Vec<String>>) -> Result<usize> {
     let sum = paths.iter().fold(0, |acc, p| acc + p.len());
-
+    paths.len();
     Ok(sum - paths.len())
 }
 

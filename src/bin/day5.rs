@@ -14,7 +14,7 @@ fn solve(input: isize) -> Result<isize> {
     tx.send(input)?;
 
     let t = thread::spawn(move || {
-        let mut cpu = Cpu::new(&prog, receiver, sender);
+        let mut cpu = Cpu::new(&prog, sender, receiver);
         cpu.execute()
     });
 
@@ -46,7 +46,7 @@ mod day5_tests {
         let (sender, rx1): (Sender<isize>, Receiver<isize>) = mpsc::channel();
         let (tx2, receiver): (Sender<isize>, Receiver<isize>) = mpsc::channel();
 
-        (Cpu::new(&prog, rx1, tx2), sender, receiver)
+        (Cpu::new(&prog, tx2, rx1), sender, receiver)
     }
 
     #[test]

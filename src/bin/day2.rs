@@ -9,7 +9,7 @@ fn solve1(mut input: Vec<isize>, pos1: Option<isize>, pos2: Option<isize>) -> Re
     input[2] = pos2.unwrap_or(input[2]);
 
     let (tx, rx): (Sender<isize>, Receiver<isize>) = mpsc::channel();
-    let mut cpu = Cpu::new(&input, rx, tx);
+    let mut cpu = Cpu::new(&input, tx, rx);
     cpu.execute()?;
 
     Ok(cpu.prog[0])
