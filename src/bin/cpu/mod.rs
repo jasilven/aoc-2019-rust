@@ -1,10 +1,11 @@
 use anyhow::Result;
+use std::collections::HashMap;
 use std::sync::mpsc::{self, Receiver, Sender};
 
-pub fn parse_input(fname: &str) -> Result<Vec<isize>> {
+pub fn parse_input(fname: &str) -> Result<Vec<i128>> {
     let input = std::fs::read_to_string(fname)?;
     let input = input.trim_end();
-    let result = input.split(',').map(|s| s.parse::<isize>()).collect();
+    let result = input.split(',').map(|s| s.parse::<i128>()).collect();
     match result {
         Ok(v) => Ok(v),
         Err(e) => anyhow::bail!("parse error: {}", e),
@@ -12,38 +13,59 @@ pub fn parse_input(fname: &str) -> Result<Vec<isize>> {
 }
 
 pub struct Cpu {
-    pc: usize,
-    sender: Sender<isize>,
-    recver: Receiver<isize>,
-    pub prog: Vec<isize>,
+    pc: u128,
+    base: i128,
+    sender: Sender<i128>,
+    recver: Receiver<i128>,
+    mem: HashMap<u128, i128>,
 }
 
 impl Cpu {
-    pub fn new(program: &[isize], sender: Sender<isize>, recver: Receiver<isize>) -> Cpu {
+    pub fn new(program: &[i128], sender: Sender<i128>, recver: Receiver<i128>) -> Cpu {
+        let mut hm: HashMap<u128, i128> = HashMap::new();
+        for (k, i) in program.iter().enumerate() {
+            hm.insert(k as u128, *i);
+        }
+
         Cpu {
-            pc: 0,
+            pc: 0u128,
+            base: 0,
             sender,
             recver,
-            prog: program.into(),
+            mem: hm,
         }
     }
 
-    fn parse_instruction(&self) -> Result<(isize, isize, isize, isize)> {
-        let s = format!("{}{}", "0000", self.prog[self.pc]);
+    pub fn get_mem(&self, k: u128) -> Result<i128> {
+        match self.mem.get(&k) {
+            Some(val) => Ok(*val),
+            None => Ok(0),
+        }
+    }
+
+    fn set_mem(&mut self, k: u128, v: i128) {
+        self.mem.insert(k, v);
+    }
+
+    fn parse_instruction(&self) -> Result<(i128, i128, i128, i128)> {
+        let s = format!("{}{}", "0000", self.get_mem(self.pc)?);
         let inst: Vec<char> = s.chars().rev().take(5).collect();
 
         let opstr = format!("{}{}", inst[1], inst[0]);
-        let opcode: isize = opstr.parse()?;
-        let m1: isize = inst[2] as isize - 48;
-        let m2: isize = inst[3] as isize - 48;
-        let m3: isize = inst[4] as isize - 48;
+        let opcode: i128 = opstr.parse()?;
+        let m1: i128 = inst[2] as i128 - 48;
+        let m2: i128 = inst[3] as i128 - 48;
+        let m3: i128 = inst[4] as i128 - 48;
         Ok((opcode, m1, m2, m3))
     }
 
-    fn get_param(&self, offset: usize, mode: usize) -> Result<isize> {
+    fn get_param(&self, offset: i128, mode: u128) -> Result<i128> {
         match mode {
-            0 => Ok(self.prog[self.prog[self.pc + offset] as usize]),
-            1 => Ok(self.prog[self.pc + offset]),
+            0 => Ok(self.get_mem(self.get_mem((self.pc as i128 + offset) as u128)? as u128)?),
+            1 => Ok(self.get_mem((self.pc as i128 + offset) as u128)?),
+            2 => Ok(self.get_mem(
+                (self.base + self.get_mem((self.pc as i128 + offset) as u128)?) as u128,
+            )?),
             _ => anyhow::bail!("unknown mode: {}", mode),
         }
     }
@@ -51,72 +73,102 @@ impl Cpu {
     pub fn execute(&mut self) -> Result<()> {
         loop {
             match self.parse_instruction()? {
-                (1, m1, m2, _) => {
-                    let c = self.prog[self.pc + 3] as usize;
-                    self.prog[c] =
-                        self.get_param(1, m1 as usize)? + self.get_param(2, m2 as usize)?;
+                (1, m1, m2, m3) => {
+                    let mut c = self.get_mem(self.pc + 3)?;
+                    if m3 == 2 {
+                        c = self.base + c;
+                    }
+                    self.set_mem(
+                        c as u128,
+                        self.get_param(1, m1 as u128)? + self.get_param(2, m2 as u128)?,
+                    );
                     self.pc += 4;
                 }
-                (2, m1, m2, _) => {
-                    let c = self.prog[self.pc + 3] as usize;
-                    self.prog[c] =
-                        self.get_param(1, m1 as usize)? * self.get_param(2, m2 as usize)?;
+                (2, m1, m2, m3) => {
+                    let mut c = self.get_mem(self.pc + 3)?;
+                    if m3 == 2 {
+                        c = self.base + c;
+                    }
+                    self.set_mem(
+                        c as u128,
+                        self.get_param(1, m1 as u128)? * self.get_param(2, m2 as u128)?,
+                    );
                     self.pc += 4;
                 }
-                (3, _, _, _) => {
-                    let a = self.prog[self.pc + 1] as usize;
-                    self.prog[a] = self.recver.recv()?;
+                (3, m1, _, _) => {
+                    let mut a = self.get_mem(self.pc + 1)?;
+                    if m1 == 2 {
+                        a = self.base + a;
+                    }
+                    self.set_mem(a as u128, self.recver.recv()?);
                     self.pc += 2;
                 }
                 (4, m1, _, _) => {
-                    let a = self.get_param(1, m1 as usize)?;
+                    let a = self.get_param(1, m1 as u128)?;
 
                     self.sender.send(a)?;
                     self.pc += 2;
                 }
                 (5, m1, m2, _) => {
-                    let a = self.get_param(1, m1 as usize)?;
-                    let b = self.get_param(2, m2 as usize)?;
+                    let a = self.get_param(1, m1 as u128)?;
+                    let b = self.get_param(2, m2 as u128)?;
                     if a != 0 {
-                        self.pc = b as usize;
+                        self.pc = b as u128;
                     } else {
                         self.pc += 3;
                     }
                 }
                 (6, m1, m2, _) => {
-                    let a = self.get_param(1, m1 as usize)?;
-                    let b = self.get_param(2, m2 as usize)?;
+                    let a = self.get_param(1, m1 as u128)?;
+                    let b = self.get_param(2, m2 as u128)?;
                     if a == 0 {
-                        self.pc = b as usize;
+                        self.pc = b as u128;
                     } else {
                         self.pc += 3;
                     }
                 }
-                (7, m1, m2, _m3) => {
-                    let a = self.get_param(1, m1 as usize)?;
-                    let b = self.get_param(2, m2 as usize)?;
-                    // let c = self.get_param(3, m3 as usize)? as usize;
-                    let c = self.prog[self.pc + 3] as usize;
+                (7, m1, m2, m3) => {
+                    let a = self.get_param(1, m1 as u128)?;
+                    let b = self.get_param(2, m2 as u128)?;
+
+                    let mut c = self.get_mem(self.pc + 3)?;
+
+                    if m3 == 2 {
+                        c = self.base + c;
+                    }
                     if a < b {
-                        self.prog[c] = 1;
+                        self.set_mem(c as u128, 1);
                     } else {
-                        self.prog[c] = 0;
+                        self.set_mem(c as u128, 0);
                     }
                     self.pc += 4;
                 }
-                (8, m1, m2, _m3) => {
-                    let a = self.get_param(1, m1 as usize)?;
-                    let b = self.get_param(2, m2 as usize)?;
-                    let c = self.prog[self.pc + 3] as usize;
+                (8, m1, m2, m3) => {
+                    let a = self.get_param(1, m1 as u128)?;
+                    let b = self.get_param(2, m2 as u128)?;
+                    let mut c = self.get_mem(self.pc + 3)?;
+
+                    if m3 == 2 {
+                        c = self.base + c;
+                    }
                     if a == b {
-                        self.prog[c] = 1;
+                        self.set_mem(c as u128, 1);
                     } else {
-                        self.prog[c] = 0;
+                        self.set_mem(c as u128, 0);
                     }
                     self.pc += 4;
+                }
+                (9, m1, _, _) => {
+                    let a = self.get_param(1, m1 as u128)?;
+                    self.base = self.base as i128 + a;
+                    self.pc += 2;
                 }
                 (99, _, _, _) => break,
-                _ => anyhow::bail!("unknown opcode '{}' at '{}'", self.prog[self.pc], &self.pc),
+                _ => anyhow::bail!(
+                    "unknown opcode '{}' at '{}'",
+                    self.get_mem(self.pc)?,
+                    &self.pc
+                ),
             }
         }
         Ok(())
@@ -129,7 +181,7 @@ mod cpu_tests {
 
     #[test]
     fn parse_instruction() {
-        let (tx, rx): (Sender<isize>, Receiver<isize>) = mpsc::channel();
+        let (tx, rx): (Sender<i128>, Receiver<i128>) = mpsc::channel();
         let cpu = Cpu::new(&vec![1002], tx, rx);
         assert_eq!(cpu.parse_instruction().unwrap(), (2, 0, 1, 0));
     }
@@ -144,8 +196,8 @@ mod cpu_tests {
         ];
 
         for prog in progs {
-            let (tx, rx): (Sender<isize>, Receiver<isize>) = mpsc::channel();
-            let (tx2, rx2): (Sender<isize>, Receiver<isize>) = mpsc::channel();
+            let (tx, rx): (Sender<i128>, Receiver<i128>) = mpsc::channel();
+            let (tx2, rx2): (Sender<i128>, Receiver<i128>) = mpsc::channel();
             let mut cpu = Cpu::new(&prog, tx2, rx);
             tx.send(9).unwrap();
             cpu.execute().unwrap();
@@ -161,8 +213,8 @@ mod cpu_tests {
         ];
 
         for prog in progs {
-            let (tx, rx): (Sender<isize>, Receiver<isize>) = mpsc::channel();
-            let (tx2, rx2): (Sender<isize>, Receiver<isize>) = mpsc::channel();
+            let (tx, rx): (Sender<i128>, Receiver<i128>) = mpsc::channel();
+            let (tx2, rx2): (Sender<i128>, Receiver<i128>) = mpsc::channel();
             let mut cpu = Cpu::new(&prog, tx2, rx);
             tx.send(0).unwrap();
             cpu.execute().unwrap();
@@ -178,11 +230,60 @@ mod cpu_tests {
             20, 1105, 1, 46, 98, 99,
         ];
 
-        let (tx, rx): (Sender<isize>, Receiver<isize>) = mpsc::channel();
-        let (tx2, rx2): (Sender<isize>, Receiver<isize>) = mpsc::channel();
+        let (tx, rx): (Sender<i128>, Receiver<i128>) = mpsc::channel();
+        let (tx2, rx2): (Sender<i128>, Receiver<i128>) = mpsc::channel();
         let mut cpu = Cpu::new(&prog, tx2, rx);
         tx.send(7).unwrap();
         cpu.execute().unwrap();
         assert_eq!(999, rx2.recv().unwrap());
+    }
+
+    #[test]
+    fn relative_base() {
+        let prog: Vec<i128> = vec![
+            109, 1, 204, -1, 1001, 100, 1, 100, 1008, 100, 16, 101, 1006, 101, 0, 99,
+        ];
+
+        let (_, rx): (Sender<i128>, Receiver<i128>) = mpsc::channel();
+        let (tx2, rx2): (Sender<i128>, Receiver<i128>) = mpsc::channel();
+        let mut cpu = Cpu::new(&prog, tx2, rx);
+
+        cpu.execute().unwrap();
+
+        let mut output = vec![];
+        for _ in 0..prog.len() {
+            match rx2.recv() {
+                Ok(val) => output.push(val),
+                Err(_) => break,
+            }
+        }
+        assert_eq!(&prog, &output);
+    }
+
+    #[test]
+    fn relative_base2() {
+        let prog: Vec<i128> = vec![1102, 34915192, 34915192, 7, 4, 7, 99, 0];
+
+        let (_, rx): (Sender<i128>, Receiver<i128>) = mpsc::channel();
+        let (tx2, rx2): (Sender<i128>, Receiver<i128>) = mpsc::channel();
+        let mut cpu = Cpu::new(&prog, tx2, rx);
+
+        cpu.execute().unwrap();
+        let output = rx2.recv().unwrap();
+        let digit_cnt = output.to_string().chars().count();
+        assert_eq!(16, digit_cnt);
+    }
+
+    #[test]
+    fn relative_base3() {
+        let prog: Vec<i128> = vec![104, 1125899906842624, 99];
+
+        let (_, rx): (Sender<i128>, Receiver<i128>) = mpsc::channel();
+        let (tx2, rx2): (Sender<i128>, Receiver<i128>) = mpsc::channel();
+        let mut cpu = Cpu::new(&prog, tx2, rx);
+
+        cpu.execute().unwrap();
+        let output = rx2.recv().unwrap();
+        assert_eq!(1125899906842624, output);
     }
 }

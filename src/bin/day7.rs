@@ -7,15 +7,15 @@ mod cpu;
 use cpu::Cpu;
 
 fn create_amp_circuit(
-    prog: &[isize],
-    init_seq: &[isize],
-) -> Result<(Vec<Cpu>, Sender<isize>, Receiver<isize>)> {
-    let mut senders: Vec<Sender<isize>> = vec![];
-    let mut recvers: Vec<Receiver<isize>> = vec![];
+    prog: &[i128],
+    init_seq: &[i128],
+) -> Result<(Vec<Cpu>, Sender<i128>, Receiver<i128>)> {
+    let mut senders: Vec<Sender<i128>> = vec![];
+    let mut recvers: Vec<Receiver<i128>> = vec![];
     let mut cpus: Vec<Cpu> = vec![];
 
     for _ in 0..=init_seq.len() {
-        let (tx, rx): (Sender<isize>, Receiver<isize>) = mpsc::channel();
+        let (tx, rx): (Sender<i128>, Receiver<i128>) = mpsc::channel();
         senders.push(tx);
         recvers.push(rx);
     }
@@ -39,8 +39,8 @@ fn create_amp_circuit(
     Ok((cpus, sender, recver))
 }
 
-fn solve1(prog: &[isize]) -> Result<usize> {
-    let mut result = 0usize;
+fn solve1(prog: &[i128]) -> Result<u128> {
+    let mut result = 0u128;
     let perms = (0..=4).permutations(5);
 
     for seq in perms {
@@ -54,7 +54,7 @@ fn solve1(prog: &[isize]) -> Result<usize> {
             let th = thread::spawn(move || cpu.execute());
             handles.push(th);
         }
-        result = std::cmp::max(recver.recv()? as usize, result);
+        result = std::cmp::max(recver.recv()? as u128, result);
 
         for th in handles {
             th.join().unwrap()?;
@@ -64,8 +64,8 @@ fn solve1(prog: &[isize]) -> Result<usize> {
     Ok(result)
 }
 
-fn solve2(prog: &[isize]) -> Result<usize> {
-    let mut result = 0usize;
+fn solve2(prog: &[i128]) -> Result<u128> {
+    let mut result = 0u128;
     let perms = (5..=9).permutations(5);
 
     for seq in perms {
@@ -84,7 +84,7 @@ fn solve2(prog: &[isize]) -> Result<usize> {
         loop {
             match recver.recv_timeout(d) {
                 Ok(val) => {
-                    result = std::cmp::max(val as usize, result);
+                    result = std::cmp::max(val as u128, result);
                     if let Err(_) = sender.send(val) {
                         break;
                     }

@@ -4,18 +4,18 @@ use std::sync::mpsc;
 use std::sync::mpsc::{Receiver, Sender};
 mod cpu;
 
-fn solve1(mut input: Vec<isize>, pos1: Option<isize>, pos2: Option<isize>) -> Result<isize> {
+fn solve1(mut input: Vec<i128>, pos1: Option<i128>, pos2: Option<i128>) -> Result<i128> {
     input[1] = pos1.unwrap_or(input[1]);
     input[2] = pos2.unwrap_or(input[2]);
 
-    let (tx, rx): (Sender<isize>, Receiver<isize>) = mpsc::channel();
+    let (tx, rx): (Sender<i128>, Receiver<i128>) = mpsc::channel();
     let mut cpu = Cpu::new(&input, tx, rx);
     cpu.execute()?;
 
-    Ok(cpu.prog[0])
+    Ok(cpu.get_mem(0)?)
 }
 
-fn solve2(input: Vec<isize>) -> Result<isize> {
+fn solve2(input: Vec<i128>) -> Result<i128> {
     for noun in 0..100 {
         for verb in 0..100 {
             let prog = input.to_vec();

@@ -6,10 +6,10 @@ use std::thread;
 mod cpu;
 use cpu::Cpu;
 
-fn solve(input: isize) -> Result<isize> {
+fn solve(input: i128) -> Result<i128> {
     let prog = cpu::parse_input("resources/day5-input.txt")?;
-    let (tx, receiver): (Sender<isize>, Receiver<isize>) = mpsc::channel();
-    let (sender, rx): (Sender<isize>, Receiver<isize>) = mpsc::channel();
+    let (tx, receiver): (Sender<i128>, Receiver<i128>) = mpsc::channel();
+    let (sender, rx): (Sender<i128>, Receiver<i128>) = mpsc::channel();
 
     tx.send(input)?;
 
@@ -41,10 +41,10 @@ fn main() -> Result<()> {
 mod day5_tests {
     use super::*;
 
-    fn new_cpu(fname: &str) -> (Cpu, Sender<isize>, Receiver<isize>) {
+    fn new_cpu(fname: &str) -> (Cpu, Sender<i128>, Receiver<i128>) {
         let prog = cpu::parse_input(fname).unwrap();
-        let (sender, rx1): (Sender<isize>, Receiver<isize>) = mpsc::channel();
-        let (tx2, receiver): (Sender<isize>, Receiver<isize>) = mpsc::channel();
+        let (sender, rx1): (Sender<i128>, Receiver<i128>) = mpsc::channel();
+        let (tx2, receiver): (Sender<i128>, Receiver<i128>) = mpsc::channel();
 
         (Cpu::new(&prog, tx2, rx1), sender, receiver)
     }
@@ -64,6 +64,6 @@ mod day5_tests {
     fn test_input2() {
         let (mut cpu, _, _) = new_cpu("resources/day5-test2.txt");
         cpu.execute().unwrap();
-        assert_eq!(99, cpu.prog[4]);
+        assert_eq!(99, cpu.get_mem(4).unwrap());
     }
 }
