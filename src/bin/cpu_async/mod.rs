@@ -1,5 +1,5 @@
 use anyhow::Result;
-use async_std::sync::{self, Receiver, Sender};
+use async_std::sync::{Receiver, Sender};
 
 pub fn parse_input(fname: &str) -> Result<Vec<isize>> {
     let input = std::fs::read_to_string(fname)?;
@@ -96,7 +96,6 @@ impl Cpu {
                 (7, m1, m2, _m3) => {
                     let a = self.get_param(1, m1 as usize)?;
                     let b = self.get_param(2, m2 as usize)?;
-                    // let c = self.get_param(3, m3 as usize)? as usize;
                     let c = self.prog[self.pc + 3] as usize;
                     if a < b {
                         self.prog[c] = 1;
@@ -124,66 +123,60 @@ impl Cpu {
     }
 }
 
-// #[cfg(test)]
-// mod cpu_tests {
-//     use super::*;
+#[cfg(test)]
+mod cpu_tests_await {
+    use super::*;
+    use async_std::sync::channel;
 
-//     #[test]
-//     fn parse_instruction() {
-//         let (tx, rx): (Sender<isize>, Receiver<isize>) = mpsc::channel();
-//         let cpu = Cpu::new(&vec![1002], tx, rx);
-//         assert_eq!(cpu.parse_instruction().unwrap(), (2, 0, 1, 0));
-//     }
+    #[async_std::test]
+    async fn compare_tests() {
+        let progs = vec![
+            vec![3, 9, 8, 9, 10, 9, 4, 9, 99, -1, 8],
+            vec![3, 9, 7, 9, 10, 9, 4, 9, 99, -1, 8],
+            vec![3, 3, 1108, -1, 8, 3, 4, 3, 99],
+            vec![3, 3, 1107, -1, 8, 3, 4, 3, 99],
+        ];
 
-//     #[test]
-//     fn compare_tests() {
-//         let progs = vec![
-//             vec![3, 9, 8, 9, 10, 9, 4, 9, 99, -1, 8],
-//             vec![3, 9, 7, 9, 10, 9, 4, 9, 99, -1, 8],
-//             vec![3, 3, 1108, -1, 8, 3, 4, 3, 99],
-//             vec![3, 3, 1107, -1, 8, 3, 4, 3, 99],
-//         ];
+        for prog in progs {
+            let (tx, rx): (Sender<isize>, Receiver<isize>) = channel(1);
+            let (tx2, rx2): (Sender<isize>, Receiver<isize>) = channel(1);
+            let mut cpu = Cpu::new(&prog, tx2, rx);
+            tx.send(9).await;
+            cpu.execute().await.unwrap();
+            assert_eq!(0, rx2.recv().await.unwrap());
+        }
+    }
 
-//         for prog in progs {
-//             let (tx, rx): (Sender<isize>, Receiver<isize>) = mpsc::channel();
-//             let (tx2, rx2): (Sender<isize>, Receiver<isize>) = mpsc::channel();
-//             let mut cpu = Cpu::new(&prog, tx2, rx);
-//             tx.send(9).unwrap();
-//             cpu.execute().unwrap();
-//             assert_eq!(0, rx2.recv().unwrap());
-//         }
-//     }
+    #[async_std::test]
+    async fn jump_tests() {
+        let progs = vec![
+            vec![3, 12, 6, 12, 15, 1, 13, 14, 13, 4, 13, 99, -1, 0, 1, 9],
+            vec![3, 3, 1105, -1, 9, 1101, 0, 0, 12, 4, 12, 99, 1],
+        ];
 
-//     #[test]
-//     fn jump_tests() {
-//         let progs = vec![
-//             vec![3, 12, 6, 12, 15, 1, 13, 14, 13, 4, 13, 99, -1, 0, 1, 9],
-//             vec![3, 3, 1105, -1, 9, 1101, 0, 0, 12, 4, 12, 99, 1],
-//         ];
+        for prog in progs {
+            let (tx, rx): (Sender<isize>, Receiver<isize>) = channel(1);
+            let (tx2, rx2): (Sender<isize>, Receiver<isize>) = channel(1);
+            let mut cpu = Cpu::new(&prog, tx2, rx);
+            tx.send(0).await;
+            cpu.execute().await.unwrap();
+            assert_eq!(0, rx2.recv().await.unwrap());
+        }
+    }
 
-//         for prog in progs {
-//             let (tx, rx): (Sender<isize>, Receiver<isize>) = mpsc::channel();
-//             let (tx2, rx2): (Sender<isize>, Receiver<isize>) = mpsc::channel();
-//             let mut cpu = Cpu::new(&prog, tx2, rx);
-//             tx.send(0).unwrap();
-//             cpu.execute().unwrap();
-//             assert_eq!(0, rx2.recv().unwrap());
-//         }
-//     }
+    #[async_std::test]
+    async fn test_larger_program() {
+        let prog = vec![
+            3, 21, 1008, 21, 8, 20, 1005, 20, 22, 107, 8, 21, 20, 1006, 20, 31, 1106, 0, 36, 98, 0,
+            0, 1002, 21, 125, 20, 4, 20, 1105, 1, 46, 104, 999, 1105, 1, 46, 1101, 1000, 1, 20, 4,
+            20, 1105, 1, 46, 98, 99,
+        ];
 
-//     #[test]
-//     fn test_larger_program() {
-//         let prog = vec![
-//             3, 21, 1008, 21, 8, 20, 1005, 20, 22, 107, 8, 21, 20, 1006, 20, 31, 1106, 0, 36, 98, 0,
-//             0, 1002, 21, 125, 20, 4, 20, 1105, 1, 46, 104, 999, 1105, 1, 46, 1101, 1000, 1, 20, 4,
-//             20, 1105, 1, 46, 98, 99,
-//         ];
-
-//         let (tx, rx): (Sender<isize>, Receiver<isize>) = mpsc::channel();
-//         let (tx2, rx2): (Sender<isize>, Receiver<isize>) = mpsc::channel();
-//         let mut cpu = Cpu::new(&prog, tx2, rx);
-//         tx.send(7).unwrap();
-//         cpu.execute().unwrap();
-//         assert_eq!(999, rx2.recv().unwrap());
-//     }
-// }
+        let (tx, rx): (Sender<isize>, Receiver<isize>) = channel(1);
+        let (tx2, rx2): (Sender<isize>, Receiver<isize>) = channel(1);
+        let mut cpu = Cpu::new(&prog, tx2, rx);
+        tx.send(7).await;
+        cpu.execute().await.unwrap();
+        assert_eq!(999, rx2.recv().await.unwrap());
+    }
+}
