@@ -13,3 +13,4 @@ async-std = {version = "1.6", features = ["attributes", "unstable"]}
 num = "0.3"
 rustbox = "*"
 rand = "*"
+rayon = "1.3.1"
