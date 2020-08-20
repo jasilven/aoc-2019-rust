@@ -50,7 +50,7 @@ fn solve1(input: &[isize], pattern: &[isize], phases: usize) -> Result<String> {
 }
 
 fn solve2(input: &[isize]) -> Result<String> {
-    slet input: Vec<isize> = input
+    let input: Vec<isize> = input
         .iter()
         .cycle()
         .take(input.len() * 10000)
