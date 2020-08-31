@@ -1,6 +1,5 @@
 use anyhow::Result;
-use std::cmp::Ordering;
-use std::collections::{BTreeSet, HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::io::{BufRead, BufReader};
 mod util;
 
@@ -8,24 +7,18 @@ fn parse_input(path: &str) -> Result<HashMap<(isize, isize), char>> {
     let mut result = HashMap::new();
     let file = std::fs::File::open(path)?;
 
-    let (mut x, mut y) = (0, 0);
-
-    for line in BufReader::new(&file).lines() {
-        for ch in line?.trim_end().chars() {
+    for (y, line) in BufReader::new(&file).lines().enumerate() {
+        for (x, ch) in line?.trim_end().chars().enumerate() {
             if ch != '#' {
-                result.insert((x, y), ch);
+                result.insert((x as isize, y as isize), ch);
             }
-            x += 1;
         }
-        y += 1;
-        x = 0;
     }
 
     Ok(result)
 }
 
-
-fn bfs(map: &HashMap<(isize, isize), char>) -> Result<usize> {
+fn bfs(map: &HashMap<(isize, isize), char>, origin: &(isize, isize)) -> Result<usize> {
     let mut points_to_visit: VecDeque<((isize, isize), usize, usize)> = VecDeque::new();
     let mut seen: HashSet<((isize, isize), usize)> = HashSet::new();
     let mut all_keys = 0usize;
@@ -35,11 +28,6 @@ fn bfs(map: &HashMap<(isize, isize), char>) -> Result<usize> {
         .for_each(|ch| {
             all_keys = all_keys | (1 << (*ch as usize - 'a' as usize));
         });
-
-    let (origin, _) = map
-        .iter()
-        .find(|(_, val)| *val == &'@')
-        .ok_or_else(|| anyhow::anyhow!("origin not found"))?;
 
     points_to_visit.push_back((*origin, 0, all_keys));
     seen.insert((*origin, all_keys));
@@ -57,7 +45,6 @@ fn bfs(map: &HashMap<(isize, isize), char>) -> Result<usize> {
                 }
             }
         }
-
 
         for neighbour in util::neighbours(&xy) {
             match map.get(&neighbour) {
@@ -80,13 +67,90 @@ fn bfs(map: &HashMap<(isize, isize), char>) -> Result<usize> {
     }
 }
 
-fn solve1(map: &HashMap<(isize, isize), char>) -> Result<usize> {
-    bfs(map)
+fn solve1(map: &HashMap<(isize, isize), char>, origin: &(isize, isize)) -> Result<usize> {
+    bfs(map, origin)
+}
+
+fn partition_map(
+    map: &mut HashMap<(isize, isize), char>,
+    origin: &(isize, isize),
+) -> Vec<HashMap<(isize, isize), char>> {
+    let origin_deltas = [(-1, -1), (1, -1), (1, 1), (-1, 1)];
+    let del_deltas = [(-1, 0), (1, 0), (0, 1), (0, -1)];
+
+    map.remove(origin);
+
+    for (dx, dy) in del_deltas.iter() {
+        map.remove(&(origin.0 + dx, origin.1 + dy));
+    }
+    for (dx, dy) in origin_deltas.iter() {
+        map.insert((origin.0 + dx, origin.1 + dy), '@');
+    }
+    let mut result = vec![
+        HashMap::new(),
+        HashMap::new(),
+        HashMap::new(),
+        HashMap::new(),
+    ];
+
+    map.iter().for_each(|(xy, ch)| {
+        if xy.0 < origin.0 && xy.1 < origin.1 {
+            result[0].insert(*xy, *ch);
+        } else if xy.0 > origin.0 && xy.1 < origin.1 {
+            result[1].insert(*xy, *ch);
+        } else if xy.0 < origin.0 && xy.1 > origin.1 {
+            result[2].insert(*xy, *ch);
+        } else if xy.0 > origin.0 && xy.1 > origin.1 {
+            result[3].insert(*xy, *ch);
+        }
+    });
+
+    result
+}
+
+fn open_doors(map: &mut HashMap<(isize, isize), char>) {
+    let keys: HashSet<char> = map
+        .iter()
+        .filter(|(_, ch)| ch.is_ascii_lowercase())
+        .map(|(_, ch)| *ch)
+        .collect();
+
+    for (_, ch) in map.iter_mut().filter(|(_, ch)| ch.is_ascii_uppercase()) {
+        if !keys.contains(&ch.to_ascii_lowercase()) {
+            *ch = '.';
+        }
+    }
+}
+
+fn solve2(map: &mut HashMap<(isize, isize), char>, origin: &(isize, isize)) -> Result<usize> {
+    let mut result = 0;
+
+    let maps = partition_map(map, origin);
+
+    for mut m in maps {
+        open_doors(&mut m);
+
+        let (origin, _) = m
+            .iter()
+            .find(|(_, val)| *val == &'@')
+            .ok_or_else(|| anyhow::anyhow!("origin not found!"))?;
+        result += bfs(&m, origin)?;
+    }
+
+    Ok(result)
 }
 
 fn main() -> Result<()> {
     let map = parse_input("resources/day18-input.txt")?;
-    println!("part 1: {}", solve1(&map)?);
+    let mut map2 = map.clone();
+
+    let (origin, _) = map
+        .iter()
+        .find(|(_, val)| *val == &'@')
+        .ok_or_else(|| anyhow::anyhow!("origin not found"))?;
+
+    println!("part 1: {}", solve1(&map, &origin)?);
+    println!("part 2: {}", solve2(&mut map2, &origin)?);
 
     Ok(())
 }
@@ -107,7 +171,8 @@ mod day18_tests {
 
         for test in tests {
             let map = parse_input(test.0).unwrap();
-            assert_eq!(test.1, solve1(&map).unwrap());
+            let (origin, _) = map.iter().find(|(_, val)| *val == &'@').unwrap();
+            assert_eq!(test.1, solve1(&map, &origin).unwrap());
         }
     }
 }
