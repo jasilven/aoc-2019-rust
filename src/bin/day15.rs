@@ -48,7 +48,7 @@ fn solve(path: &str, rb: &RustBox) -> Result<HashMap<(isize, isize), char>> {
     let (sender, rx): (Sender<i128>, Receiver<i128>) = mpsc::channel();
 
     thread::spawn(move || {
-        let _cpu = Cpu::new(&prog, sender, receiver).execute();
+        let _cpu = Cpu::new_with_send_recv(&prog, sender, receiver).execute();
     });
 
     #[allow(unused_assignments)]

@@ -1,7 +1,7 @@
 use anyhow::Result;
 use rustbox::{Color, RustBox};
 use std::collections::HashMap;
-use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::mpsc::{Receiver, Sender};
 use std::thread;
 use std::time::Duration;
 mod cpu;
@@ -189,12 +189,10 @@ fn main() -> Result<()> {
     let mut prog = cpu::parse_input("resources/day13-input.txt")?;
     prog[0] = 2;
 
-    let (sender, rx): (Sender<i128>, Receiver<i128>) = channel();
-    let (tx2, receiver): (Sender<i128>, Receiver<i128>) = channel();
-    let mut cpu = Cpu::new(&prog, tx2, rx);
+    let (mut cpu, tx, rx) = Cpu::new(&prog);
     let th = thread::spawn(move || cpu.execute());
 
-    let mut game = Game::new(sender, receiver)?;
+    let mut game = Game::new(tx, rx)?;
 
     let rustbox = RustBox::init(Default::default())?;
 

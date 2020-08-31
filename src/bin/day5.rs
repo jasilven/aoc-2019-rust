@@ -1,6 +1,4 @@
 use anyhow::Result;
-use std::sync::mpsc;
-use std::sync::mpsc::{Receiver, Sender};
 use std::thread;
 
 mod cpu;
@@ -8,15 +6,11 @@ use cpu::Cpu;
 
 fn solve(input: i128) -> Result<i128> {
     let prog = cpu::parse_input("resources/day5-input.txt")?;
-    let (tx, receiver): (Sender<i128>, Receiver<i128>) = mpsc::channel();
-    let (sender, rx): (Sender<i128>, Receiver<i128>) = mpsc::channel();
 
+    let (mut cpu, tx, rx) = Cpu::new(&prog);
     tx.send(input)?;
 
-    let t = thread::spawn(move || {
-        let mut cpu = Cpu::new(&prog, sender, receiver);
-        cpu.execute()
-    });
+    let t = thread::spawn(move || cpu.execute());
 
     loop {
         let response = rx.recv()?;
@@ -40,13 +34,12 @@ fn main() -> Result<()> {
 #[cfg(test)]
 mod day5_tests {
     use super::*;
+    use std::sync::mpsc::{Receiver, Sender};
 
     fn new_cpu(fname: &str) -> (Cpu, Sender<i128>, Receiver<i128>) {
         let prog = cpu::parse_input(fname).unwrap();
-        let (sender, rx1): (Sender<i128>, Receiver<i128>) = mpsc::channel();
-        let (tx2, receiver): (Sender<i128>, Receiver<i128>) = mpsc::channel();
 
-        (Cpu::new(&prog, tx2, rx1), sender, receiver)
+        Cpu::new(&prog)
     }
 
     #[test]

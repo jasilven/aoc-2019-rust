@@ -1,12 +1,9 @@
 use anyhow::Result;
-use std::sync::mpsc::{self, Receiver, Sender};
 mod cpu;
 use cpu::Cpu;
 
 fn solve(prog: &[i128], input: i128) -> Result<i128> {
-    let (tx1, rx): (Sender<i128>, Receiver<i128>) = mpsc::channel();
-    let (tx2, rx2): (Sender<i128>, Receiver<i128>) = mpsc::channel();
-    let mut cpu = Cpu::new(&prog, tx2, rx);
+    let (mut cpu, tx1, rx2) = Cpu::new(&prog);
 
     tx1.send(input)?;
     cpu.execute()?;

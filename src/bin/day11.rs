@@ -2,13 +2,10 @@ use anyhow::Result;
 mod cpu;
 use cpu::Cpu;
 use std::collections::HashMap;
-use std::sync::mpsc::{channel, Receiver, Sender};
 use std::thread;
 
 fn run(prog: &[i128], start_panel: u8) -> Result<HashMap<(isize, isize), u8>> {
-    let (tx, rx): (Sender<i128>, Receiver<i128>) = channel();
-    let (tx2, rx2): (Sender<i128>, Receiver<i128>) = channel();
-    let mut cpu = Cpu::new(prog, tx2, rx);
+    let (mut cpu, tx, rx2) = Cpu::new(prog);
 
     let mut curpos = (0, 0);
     let mut direction = 0;
@@ -80,7 +77,6 @@ fn solve2(prog: &[i128]) -> Result<()> {
     let max_y = panels.keys().max_by_key(|(_, y)| y).unwrap().1;
     let min_y = panels.keys().min_by_key(|(_, y)| y).unwrap().1;
 
-    dbg!(min_y, max_x, min_y, max_y);
     for y in min_y..=max_y {
         for x in min_x..=max_x {
             match panels.get(&(x, y)) {

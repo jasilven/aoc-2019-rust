@@ -27,7 +27,7 @@ fn create_amp_circuit(
     let sender = senders.remove(0);
 
     for _ in 0..init_seq.len() {
-        let cpu = Cpu::new(prog, senders.remove(0), recvers.remove(0));
+        let cpu = Cpu::new_with_send_recv(prog, senders.remove(0), recvers.remove(0));
         cpus.push(cpu);
     }
 

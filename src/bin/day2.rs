@@ -1,15 +1,12 @@
 use anyhow::Result;
 use cpu::Cpu;
-use std::sync::mpsc;
-use std::sync::mpsc::{Receiver, Sender};
 mod cpu;
 
 fn solve1(mut input: Vec<i128>, pos1: Option<i128>, pos2: Option<i128>) -> Result<i128> {
     input[1] = pos1.unwrap_or(input[1]);
     input[2] = pos2.unwrap_or(input[2]);
 
-    let (tx, rx): (Sender<i128>, Receiver<i128>) = mpsc::channel();
-    let mut cpu = Cpu::new(&input, tx, rx);
+    let (mut cpu, _, _) = Cpu::new(&input);
     cpu.execute()?;
 
     Ok(cpu.get_mem(0)?)

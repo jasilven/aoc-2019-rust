@@ -2,7 +2,6 @@
 use cpu::Cpu;
 use std::collections::HashMap;
 use std::num::ParseIntError;
-use std::sync::mpsc::{channel, Receiver, Sender};
 use std::thread;
 mod cpu;
 mod util;
@@ -37,12 +36,8 @@ fn print_board(map: &HashMap<(isize, isize), char>) -> Result<()> {
 }
 
 fn build_map(prog: Vec<i128>) -> Result<HashMap<(isize, isize), char>> {
-    let (_tx, receiver): (Sender<i128>, Receiver<i128>) = channel();
-    let (sender, rx): (Sender<i128>, Receiver<i128>) = channel();
-
-    thread::spawn(move || {
-        let _cpu = Cpu::new(&prog, sender, receiver).execute();
-    });
+    let (mut cpu, _, rx) = Cpu::new(&prog);
+    thread::spawn(move || cpu.execute());
 
     let mut map = HashMap::new();
 
@@ -229,12 +224,8 @@ fn solve2(mut prog: Vec<i128>) -> Result<i128> {
     let main = "A,B,B,C,C,A,A,B,B,C";
     let inputs = vec![main, a, b, c, "n"];
 
-    let (tx, receiver): (Sender<i128>, Receiver<i128>) = channel();
-    let (sender, rx): (Sender<i128>, Receiver<i128>) = channel();
-
-    thread::spawn(move || {
-        let _cpu = Cpu::new(&prog, sender, receiver).execute();
-    });
+    let (mut cpu, tx, rx) = Cpu::new(&prog);
+    thread::spawn(move || cpu.execute());
 
     for input in inputs {
         loop {

@@ -1,6 +1,6 @@
 use anyhow::Result;
 use std::collections::HashMap;
-use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::mpsc::{channel, Receiver, Sender};
 
 pub fn parse_input(fname: &str) -> Result<Vec<i128>> {
     let input = std::fs::read_to_string(fname)?;
@@ -21,7 +21,18 @@ pub struct Cpu {
 }
 
 impl Cpu {
-    pub fn new(program: &[i128], sender: Sender<i128>, recver: Receiver<i128>) -> Cpu {
+    pub fn new(program: &[i128]) -> (Cpu, Sender<i128>, Receiver<i128>) {
+        let (tx, recver): (Sender<i128>, Receiver<i128>) = channel();
+        let (sender, rx): (Sender<i128>, Receiver<i128>) = channel();
+
+        (Cpu::new_with_send_recv(program, sender, recver), tx, rx)
+    }
+
+    pub fn new_with_send_recv(
+        program: &[i128],
+        sender: Sender<i128>,
+        recver: Receiver<i128>,
+    ) -> Cpu {
         let mut hm: HashMap<u128, i128> = HashMap::new();
         for (k, i) in program.iter().enumerate() {
             hm.insert(k as u128, *i);
@@ -181,8 +192,8 @@ mod cpu_tests {
 
     #[test]
     fn parse_instruction() {
-        let (tx, rx): (Sender<i128>, Receiver<i128>) = mpsc::channel();
-        let cpu = Cpu::new(&vec![1002], tx, rx);
+        let (tx, rx): (Sender<i128>, Receiver<i128>) = channel();
+        let cpu = Cpu::new_with_send_recv(&vec![1002], tx, rx);
         assert_eq!(cpu.parse_instruction().unwrap(), (2, 0, 1, 0));
     }
 
@@ -196,9 +207,9 @@ mod cpu_tests {
         ];
 
         for prog in progs {
-            let (tx, rx): (Sender<i128>, Receiver<i128>) = mpsc::channel();
-            let (tx2, rx2): (Sender<i128>, Receiver<i128>) = mpsc::channel();
-            let mut cpu = Cpu::new(&prog, tx2, rx);
+            let (tx, rx): (Sender<i128>, Receiver<i128>) = channel();
+            let (tx2, rx2): (Sender<i128>, Receiver<i128>) = channel();
+            let mut cpu = Cpu::new_with_send_recv(&prog, tx2, rx);
             tx.send(9).unwrap();
             cpu.execute().unwrap();
             assert_eq!(0, rx2.recv().unwrap());
@@ -213,9 +224,9 @@ mod cpu_tests {
         ];
 
         for prog in progs {
-            let (tx, rx): (Sender<i128>, Receiver<i128>) = mpsc::channel();
-            let (tx2, rx2): (Sender<i128>, Receiver<i128>) = mpsc::channel();
-            let mut cpu = Cpu::new(&prog, tx2, rx);
+            let (tx, rx): (Sender<i128>, Receiver<i128>) = channel();
+            let (tx2, rx2): (Sender<i128>, Receiver<i128>) = channel();
+            let mut cpu = Cpu::new_with_send_recv(&prog, tx2, rx);
             tx.send(0).unwrap();
             cpu.execute().unwrap();
             assert_eq!(0, rx2.recv().unwrap());
@@ -230,9 +241,9 @@ mod cpu_tests {
             20, 1105, 1, 46, 98, 99,
         ];
 
-        let (tx, rx): (Sender<i128>, Receiver<i128>) = mpsc::channel();
-        let (tx2, rx2): (Sender<i128>, Receiver<i128>) = mpsc::channel();
-        let mut cpu = Cpu::new(&prog, tx2, rx);
+        let (tx, rx): (Sender<i128>, Receiver<i128>) = channel();
+        let (tx2, rx2): (Sender<i128>, Receiver<i128>) = channel();
+        let mut cpu = Cpu::new_with_send_recv(&prog, tx2, rx);
         tx.send(7).unwrap();
         cpu.execute().unwrap();
         assert_eq!(999, rx2.recv().unwrap());
@@ -244,9 +255,9 @@ mod cpu_tests {
             109, 1, 204, -1, 1001, 100, 1, 100, 1008, 100, 16, 101, 1006, 101, 0, 99,
         ];
 
-        let (_, rx): (Sender<i128>, Receiver<i128>) = mpsc::channel();
-        let (tx2, rx2): (Sender<i128>, Receiver<i128>) = mpsc::channel();
-        let mut cpu = Cpu::new(&prog, tx2, rx);
+        let (_, rx): (Sender<i128>, Receiver<i128>) = channel();
+        let (tx2, rx2): (Sender<i128>, Receiver<i128>) = channel();
+        let mut cpu = Cpu::new_with_send_recv(&prog, tx2, rx);
 
         cpu.execute().unwrap();
 
@@ -264,9 +275,9 @@ mod cpu_tests {
     fn relative_base2() {
         let prog: Vec<i128> = vec![1102, 34915192, 34915192, 7, 4, 7, 99, 0];
 
-        let (_, rx): (Sender<i128>, Receiver<i128>) = mpsc::channel();
-        let (tx2, rx2): (Sender<i128>, Receiver<i128>) = mpsc::channel();
-        let mut cpu = Cpu::new(&prog, tx2, rx);
+        let (_, rx): (Sender<i128>, Receiver<i128>) = channel();
+        let (tx2, rx2): (Sender<i128>, Receiver<i128>) = channel();
+        let mut cpu = Cpu::new_with_send_recv(&prog, tx2, rx);
 
         cpu.execute().unwrap();
         let output = rx2.recv().unwrap();
@@ -278,9 +289,9 @@ mod cpu_tests {
     fn relative_base3() {
         let prog: Vec<i128> = vec![104, 1125899906842624, 99];
 
-        let (_, rx): (Sender<i128>, Receiver<i128>) = mpsc::channel();
-        let (tx2, rx2): (Sender<i128>, Receiver<i128>) = mpsc::channel();
-        let mut cpu = Cpu::new(&prog, tx2, rx);
+        let (_, rx): (Sender<i128>, Receiver<i128>) = channel();
+        let (tx2, rx2): (Sender<i128>, Receiver<i128>) = channel();
+        let mut cpu = Cpu::new_with_send_recv(&prog, tx2, rx);
 
         cpu.execute().unwrap();
         let output = rx2.recv().unwrap();
