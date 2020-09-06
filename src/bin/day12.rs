@@ -70,6 +70,7 @@ fn total_energy(moons: &Vec<Vec<isize>>) -> usize {
     result as usize
 }
 
+#[allow(dead_code)]
 fn print_moons(moons: &Vec<Vec<isize>>, steps: usize) {
     println!("After {} steps:", steps);
     for moon in moons.iter() {

@@ -2,16 +2,6 @@ pub fn manhattan_distance(a: &(isize, isize), b: &(isize, isize)) -> isize {
     (a.0 - b.0).abs() + (a.1 - b.1).abs()
 }
 
-pub fn neighbours(pos: &(isize, isize)) -> Vec<(isize, isize)> {
-    [
-        (pos.0, pos.1 + 1),
-        (pos.0, pos.1 - 1),
-        (pos.0 + 1, pos.1),
-        (pos.0 - 1, pos.1),
-    ]
-    .to_vec()
-}
-
 #[cfg(test)]
 mod util_tests {
     use super::*;

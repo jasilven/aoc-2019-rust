@@ -2,6 +2,7 @@ use anyhow::Result;
 use std::collections::HashMap;
 use std::sync::mpsc::{channel, Receiver, Sender};
 
+#[allow(dead_code)]
 pub fn parse_input(fname: &str) -> Result<Vec<i128>> {
     let input = std::fs::read_to_string(fname)?;
     let input = input.trim_end();
@@ -21,6 +22,7 @@ pub struct Cpu {
 }
 
 impl Cpu {
+    #[allow(dead_code)]
     pub fn new(program: &[i128]) -> (Cpu, Sender<i128>, Receiver<i128>) {
         let (tx, recver): (Sender<i128>, Receiver<i128>) = channel();
         let (sender, rx): (Sender<i128>, Receiver<i128>) = channel();

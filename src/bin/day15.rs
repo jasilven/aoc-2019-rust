@@ -200,7 +200,10 @@ fn bfs(origin: char, target: char, map: &HashMap<(isize, isize), char>) -> Resul
             break;
         }
 
-        for neighbour in util::neighbours(&curpos) {
+        for neighbour in [(1, 0), (-1, 0), (0, 1), (0, -1)]
+            .iter()
+            .map(|(dx, dy)| (curpos.0 + dx, curpos.1 + dy))
+        {
             match map.get(&neighbour) {
                 None | Some('#') => continue,
                 _ => {
@@ -238,7 +241,10 @@ fn solve2(map: &HashMap<(isize, isize), char>) -> Result<usize> {
 
         seen.insert(curpos);
 
-        for neighbour in util::neighbours(&curpos) {
+        for neighbour in [(1, 0), (-1, 0), (0, 1), (0, -1)]
+            .iter()
+            .map(|(dx, dy)| (curpos.0 + dx, curpos.1 + dy))
+        {
             match map.get(&neighbour) {
                 None | Some('#') => continue,
                 _ => {

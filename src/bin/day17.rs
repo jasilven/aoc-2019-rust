@@ -87,9 +87,10 @@ fn solve1(map: &HashMap<(isize, isize), char>) -> Result<isize> {
         .iter()
         .filter(|((x, y), ch)| {
             *ch == &'#'
-                && util::neighbours(&(*x, *y))
+                && [(1, 0), (-1, 0), (0, 1), (0, -1)]
                     .iter()
-                    .all(|xy| map.get(xy).unwrap_or(&' ') == &'#')
+                    .map(|(dx, dy)| (x + dx, y + dy))
+                    .all(|xy| map.get(&xy).unwrap_or(&' ') == &'#')
         })
         .map(|((x, y), _)| (x * y) as isize)
         .sum();

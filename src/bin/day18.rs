@@ -46,7 +46,11 @@ fn bfs(map: &HashMap<(isize, isize), char>, origin: &(isize, isize)) -> Result<u
             }
         }
 
-        for neighbour in util::neighbours(&xy) {
+        for neighbour in [(1, 0), (-1, 0), (0, 1), (0, -1)]
+            .iter()
+            .map(|(dx, dy)| (xy.0 + dx, xy.1 + dy))
+        {
+            // for neighbour in util::neighbours(&xy) {
             match map.get(&neighbour) {
                 None => continue,
                 Some(ch) => {
