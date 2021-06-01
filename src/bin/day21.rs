@@ -3,7 +3,7 @@ use std::thread;
 mod cpu;
 use cpu::Cpu;
 
-fn solve1(prog: &[i128]) -> Result<i128> {
+fn solve(prog: &[i128], instructions: &[u8]) -> Result<i128> {
     let (mut cpu, tx, rx) = Cpu::new(&prog);
 
     let handle = thread::spawn(move || -> Result<()> { cpu.execute() });
@@ -12,7 +12,7 @@ fn solve1(prog: &[i128]) -> Result<i128> {
     while rx.recv()? != 10 {}
 
     // write instructions
-    for b in b"NOT C J\nNOT A T\nOR T J\nAND D J\nWALK\n" {
+    for b in instructions {
         tx.send(*b as i128)?;
     }
     // read response
@@ -34,8 +34,10 @@ fn solve1(prog: &[i128]) -> Result<i128> {
 
 fn main() -> Result<()> {
     let prog = cpu::parse_input("resources/day21-input.txt")?;
-
-    println!("part 1: {}", solve1(&prog)?);
+    let part1 = b"NOT C J\nNOT A T\nOR T J\nAND D J\nWALK\n";
+    let part2 = b"NOT A T\nNOT B J\nOR J T\nNOT C J\nOR J T\nNOT D J\nNOT J J\nAND T J\nAND E T\nOR H T\nAND T J\nRUN\n";
+    println!("part 1: {}", solve(&prog, part1)?);
+    println!("part 2: {}", solve(&prog, part2)?);
 
     Ok(())
 }
